@@ -3,7 +3,13 @@
   
   <url>
     <loc>https://vasily-kirichenko.github.io/blog1/</loc>
+    <lastmod>2016-05-07T09:25:11+03:00</lastmod>
     <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://vasily-kirichenko.github.io/blog1/post/post1/</loc>
+    <lastmod>2016-05-07T09:25:11+03:00</lastmod>
   </url>
   
 </urlset>

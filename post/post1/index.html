@@ -1,0 +1,356 @@
+<div class="single">
+  <!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="Hugo 0.15" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <link rel='stylesheet' href='//fonts.googleapis.com/css?family=Open+Sans|Marcellus+SC'>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/solarized_dark.min.css">
+    <link rel="stylesheet" href="https://vasily-kirichenko.github.io/blog1/css/styles.css">
+    <link rel="stylesheet" href="https://vasily-kirichenko.github.io/blog1/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://vasily-kirichenko.github.io/blog1//index.xml">
+
+    
+    <title>Akka.NET Streams vs Hopac (vs AsyncSeq - sort of) - vaskir&#39;s blog</title>
+    <meta property='og:title' content="Akka.NET Streams vs Hopac (vs AsyncSeq - sort of) - vaskir&#39;s blog">
+    <meta property="og:type" content="article">
+    
+
+    <meta property="og:url" content="https://vasily-kirichenko.github.io/blog1/post/post1/">
+    
+    
+
+  </head>
+
+  <body>
+
+    <header class="site">
+      <div class="title"><a href="https://vasily-kirichenko.github.io/blog1/">vaskir&#39;s blog</a></div>
+    </header>
+
+    <div class="container site">
+
+
+
+  <div class="row">
+    <div class="col-sm-9">
+
+      <article class="single" itemscope="itemscope" itemtype="http://schema.org/Article">
+
+        <meta itemprop="mainEntityOfPage"  itemType="https://schema.org/WebPage" content="https://vasily-kirichenko.github.io/blog1/"/>
+        <meta itemprop="dateModified" content="2016-05-07T09:25:11&#43;03:00">
+        <meta itemprop="headline" content="Akka.NET Streams vs Hopac (vs AsyncSeq - sort of)">
+        <meta itemprop="description" content="Akka.NET Streams is a port of its Scala/Java counterpart and intended to execute complex data processing graphs, optionally in parallel and even distributed. It has quite different semantics compared to Hopac&rsquo;s one and it&rsquo;s wrong to compare them feature-by-feature, but it&rsquo;s still interesting to benchmark them in a scenario which both of them supports well: read lines of a file asynchronously, filter them by a regex in controlled degree of parallelism, then normalize the lines with a simple string manipulation algorithm, also in parallel, then count the number of lines.">
+        <meta itemprop="url" content="https://vasily-kirichenko.github.io/blog1/post/post1/">
+        <div itemprop="image" itemscope itemtype="https://schema.org/ImageObject">
+          <meta itemprop="url" content="https://vasily-kirichenko.github.io/blog1/images/default.jpg" />
+          <meta itemprop="width" content="800">
+          <meta itemprop="height" content="800">
+        </div>
+        <div itemprop="publisher" itemscope itemtype="https://schema.org/Organization">
+          <div itemprop="logo" itemscope itemtype="https://schema.org/ImageObject">
+            <meta itemprop="url" content="https://vasily-kirichenko.github.io/blog1/images/logo.jpg">
+            <meta itemprop="width" content="100">
+            <meta itemprop="height" content="100">
+          </div>
+          <meta itemprop="name" content="vaskir&#39;s blog">
+        </div>
+        <div itemprop="author" itemscope itemtype="https://schema.org/Person">
+          <meta itemprop="name" content="">
+        </div>
+
+        <div class="image" style="background-image: url(https://vasily-kirichenko.github.io/blog1/images/default.jpg);"></div>
+
+        <header class="article-header">
+          <time itemprop="datePublished" pubdate="pubdate" datetime="2016-05-07T09:25:11&#43;03:00">Sat, May 7, 2016</time>
+          <h1 class="article-title">Akka.NET Streams vs Hopac (vs AsyncSeq - sort of)</h1>
+        </header>
+
+        <div class="article-body" itemprop="articleBody">
+          
+
+<p><a href="https://github.com/akkadotnet/akka.net/tree/akka-streams">Akka.NET Streams</a> is a port of its
+Scala/Java counterpart and intended to execute complex data processing graphs,
+optionally in parallel and even distributed. It has quite different semantics compared to Hopac&rsquo;s one
+and it&rsquo;s wrong to compare them feature-by-feature, but it&rsquo;s still interesting to benchmark them in a
+scenario which both of them supports well: read lines of a file asynchronously, filter them by a regex
+in controlled degree of parallelism, then normalize the lines with a simple string manipulation algorithm,
+also in parallel, then count the number of lines.</p>
+
+<p>Firts, Akka.NET:</p>
+
+<pre><code class="language-fsharp">let regex = 
+  Regex(@&quot;\{.*(?&lt;name&gt;Microsoft.*)\|\]&quot;, 
+        RegexOptions.ExplicitCapture ||| RegexOptions.Compiled)
+
+let normalizeName (name: string) = 
+  String.Join(&quot;.&quot;, name.Split([|';'; '&quot;'; ' '|], 
+              StringSplitOptions.RemoveEmptyEntries))
+
+let materializer = 
+  Configuration.defaultConfig() 
+  |&gt; System.create &quot;test&quot; 
+  |&gt; ActorMaterializer.Create
+
+let searchWithAkka (file: string) =
+    use reader = new StreamReader(file)
+    Source
+        .UnfoldAsync(0, fun _ -&gt; 
+          reader
+            .ReadLineAsync()
+            .ContinueWith(fun (x: Task&lt;string&gt;) -&gt; 0, x.Result))
+        .Take(1000000L)
+        .MapAsyncUnordered(4, fun line -&gt;
+            Task.Factory.StartNew(fun _ -&gt;
+                match regex.Match line with
+                | m when m.Success -&gt; m.Groups.[&quot;name&quot;].Value
+                | _ -&gt; &quot;&quot;))
+        .Filter(fun x -&gt; x &lt;&gt; &quot;&quot;)
+        .MapAsyncUnordered(4, fun (name: string) -&gt; 
+          Task.Factory.StartNew(fun _ -&gt; normalizeName name))
+        .RunFold(ResizeArray(), (fun acc x -&gt; acc.Add x; acc), materializer)
+        .Result
+        .Count
+
+searchWithAkka @&quot;d:\downloads\big.txt&quot;
+
+// Real: 00:00:17.407, CPU: 00:01:45.640, GC gen0: 361, gen1: 66, gen2: 1
+// val it : int = 24540
+</code></pre>
+
+<p>Note that I have to use the empty string as indication that the regular expression does not match. I should use <code>option</code> of course (just like I do in the Hopac snippet below), but Akka.NET Streams is strict about what is allowed to be returned by its combinators like <code>Map</code> or <code>Filter</code>, in particular, you cannot return <code>null</code>, doing so makes Akka.NET unhappy and it will throw exception at you. In F#, expressions like <code>fun x -&gt; printfn &quot;%O&quot; x</code> and <code>fun x -&gt; None</code> returns <code>()</code> and <code>None</code> values respectively, which are represented as <code>null</code> at runtime, so you have to be very careful <code>Map</code>ping and <code>Filter</code>ing (and using all the combinators actually) over side effecting functions or returning <code>Options</code> (just do not do either).</p>
+
+<p>Now, Hopac:</p>
+
+<pre><code class="language-fsharp">module Stream =
+    let conMapFun (count: int) (f: 'x -&gt; 'y) (s: Stream&lt;'x&gt;) : Stream&lt;'y&gt; =
+        let inCh = Ch()
+        let inStreamClosed = IVar()
+        let outCh = Ch()
+    
+        job {
+            do! Stream.iterJob (Ch.give inCh) s &gt;&gt;=. IVar.fill inStreamClosed () 
+                |&gt; Job.start
+            return! 
+              Job.forN count ((inCh &gt;&gt;- f &gt;&gt;= Ch.give outCh) 
+              |&gt; Job.foreverServer)
+        } |&gt; start
+    
+        Stream.unfoldJob (fun _ -&gt; 
+            outCh ^-&gt; fun x -&gt; Some(x, ()) 
+            &lt;|&gt;
+            inStreamClosed ^-&gt; fun _ -&gt; None
+        ) ()
+
+let searchWithHopac (file: string) =
+    let reader = new StreamReader(file)
+    Stream.indefinitely (job { return! reader.ReadLineAsync() })
+    |&gt; Stream.onCloseFun reader.Dispose
+    |&gt; Stream.take 1000000L
+    |&gt; Stream.conMapFun 4 (fun line -&gt;
+         match regex.Match line with
+         | m when m.Success -&gt; Some m.Groups.[&quot;name&quot;].Value
+         | _ -&gt; None)
+    |&gt; Stream.chooseFun id
+    |&gt; Stream.conMapFun 4 (fun name -&gt; job { return normalizeName name })
+    |&gt; Stream.count
+
+searchWithHopac @&quot;d:\downloads\big.txt&quot; |&gt; run
+
+// Real: 00:00:10.870, CPU: 00:00:59.687, GC gen0: 360, gen1: 65, gen2: 4
+// val it : int64 = 24540L
+</code></pre>
+
+<p>Hopac is 37% faster and it spent 43% less CPU time.</p>
+
+<p>Number of allocations is roughly identical (which is quite interesting and a big plus for Akka.NET,
+because it&rsquo;s not easy to fight with Hopac on this field :)).</p>
+
+<p>There is one more popular library which effectively implements asynchronous pull-based streams -
+FSharp.Control.AsyncSeq, let&rsquo;s see what it can do:</p>
+
+<pre><code class="language-fsharp">let searchWithAsyncSeq (file: string) =
+    use reader = new StreamReader(file)
+    AsyncSeq.unfoldAsync (fun _ -&gt; 
+        async {
+            let! line = reader.ReadLineAsync() |&gt; Async.AwaitTask
+            return Some (line, ())
+        }) ()
+    |&gt; AsyncSeq.take 3000
+    |&gt; AsyncSeq.chooseAsync (fun line -&gt;
+         async {
+            match regex.Match line with
+            | m when m.Success -&gt; return Some m.Groups.[&quot;name&quot;].Value
+            | _ -&gt; return None
+         })
+    |&gt; AsyncSeq.mapAsync (fun name -&gt; async { return normalizeName name })
+    |&gt; AsyncSeq.length
+    |&gt; Async.RunSynchronously
+
+searchWithAsyncSeq @&quot;d:\downloads\big.txt&quot;
+
+// Real: 00:00:06.201, CPU: 00:00:06.453, GC gen0: 643, gen1: 299, gen2: 0
+</code></pre>
+
+<p>Note, that 1. It processes only 3000 lines (which is more than 300 times less than have processed the other two)
+and 2. It does not use any parallelism. The first restriction is because 3000 lines is the maximum number that
+it managed to process in a sane amount of time. The second one is because I&rsquo;m not familiar with this library
+enough to write a combinator similar to what I wrote for Hopac (<code>Stream.conMapFun</code>). Because of the extremely
+poor performance it&rsquo;s impossible to compare AsyncSeq with the leaders, hence it&rsquo;s not presented in the chart.
+I opened an issue in AsyncSeq repository, it seems it&rsquo;s a known bug and I hope it will be fixed soon.</p>
+
+<h2 id="conclusions:a8158e2ae96b1b34e1f733f49d15bcfd">Conclusions</h2>
+
+<ul>
+<li>Use Hopac if you need the best performance available on .NET, or if you need to implement arbitrary complex
+concurrent scenarios.</li>
+<li>Akka.NET is quite fast and has a full blown graph definition DSL, so it&rsquo;s great for implementing
+complex stream processing, which can run on a cluster of nodes. However, it has a typical &ldquo;fluent&rdquo;
+C#-targeted API, so it&rsquo;s necessary to write a thin layer over it in order to make it usable from F#.</li>
+<li>And finally, unfortunately I cannot recommend to use AsyncSeq for anything, at least until the bug
+with performance is fixed.</li>
+</ul>
+
+<h2 id="update-6-may-2016:a8158e2ae96b1b34e1f733f49d15bcfd">Update 6 May, 2016</h2>
+
+<p>Marc Piechura suggested a way to exclude materialization phase from the benchmark, here is the modified code:</p>
+
+<pre><code class="language-fsharp">let searchWithAkkaOpt (file: string) =
+    let completion = TaskCompletionSource&lt;string&gt;()
+    let task = Source.FromTask completion.Task
+    use reader = new StreamReader(file)
+    let unfold = 
+      Source.UnfoldAsync(0, fun _ -&gt; 
+        reader.ReadLineAsync().ContinueWith(fun (x: Task&lt;string&gt;) -&gt; 0, x.Result))
+    let source = task.Concat unfold
+    let materialized = source.Take 1000000L
+    Thread.Sleep 500
+    completion.SetResult &quot;&quot;
+    
+    materialized
+        .MapAsyncUnordered(4, fun line -&gt;
+            Task.Factory.StartNew(fun _ -&gt;
+                match regex.Match line with
+                | m when m.Success -&gt; m.Groups.[&quot;name&quot;].Value
+                | _ -&gt; &quot;&quot;))
+        .Filter(fun x -&gt; x &lt;&gt; &quot;&quot;)
+        .MapAsyncUnordered(4, fun (name: string) -&gt; 
+          Task.Factory.StartNew(fun _ -&gt; normalizeName name))
+        .RunFold(ResizeArray(), (fun acc x -&gt; acc.Add x; acc), materializer)
+        .Result
+        .Count
+
+searchWithAkkaOpt @&quot;d:\downloads\big.txt&quot;
+
+// Real: 00:00:14.033, CPU: 00:01:29.250, GC gen0: 318, gen1: 69, gen2: 0
+</code></pre>
+
+<p>It turns out it takes Akka.NET about 3 seconds to materialize the graph. It makes sense to exclude this
+time from the benchmark because in a long running system the materialization is performed only once, at startup.</p>
+
+<p>Also, I slightly modified the Hopac version and it now perform a bit worse, but has become more concise.</p>
+
+        </div>
+
+
+        <aside>
+          
+
+          <div class="section share">
+            <a href="http://www.facebook.com/sharer.php?src=bm&u=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fpost1%2f&t=Akka.NET%20Streams%20vs%20Hopac%20%28vs%20AsyncSeq%20-%20sort%20of%29" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-facebook"></i></a>
+            <a href="http://twitter.com/intent/tweet?url=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fpost1%2f&text=Akka.NET%20Streams%20vs%20Hopac%20%28vs%20AsyncSeq%20-%20sort%20of%29&tw_p=tweetbutton" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-twitter"></i></a>
+            <a href="https://plus.google.com/share?url=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fpost1%2f" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-google-plus"></i></a>
+            <a href="http://getpocket.com/edit?url=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fpost1%2f&title=Akka.NET%20Streams%20vs%20Hopac%20%28vs%20AsyncSeq%20-%20sort%20of%29" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-get-pocket"></i></a>
+          </div>
+
+          
+          
+          
+        </aside>
+
+      </article>
+    </div>
+
+    <div class="col-sm-3">
+      <aside class="site">
+
+  
+  <div class="section">
+    <header><div class="title">TableOfContents</div></header>
+    <div class="list-default"><nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li><a href="#conclusions:a8158e2ae96b1b34e1f733f49d15bcfd">Conclusions</a></li>
+<li><a href="#update-6-may-2016:a8158e2ae96b1b34e1f733f49d15bcfd">Update 6 May, 2016</a></li>
+</ul></li>
+</ul>
+</nav></div>
+  </div>
+  
+
+  
+
+  <div class="section">
+    <header><div class="title">LatestPosts</div></header>
+    <div class="content">
+      
+      <div class="sm"><article class="li">
+  <a href="https://vasily-kirichenko.github.io/blog1/post/post1/" class="clearfix">
+    <div class="image" style="background-image: url(https://vasily-kirichenko.github.io/blog1/images/default.jpg);"></div>
+    <div class="detail">
+      <time>Sat, May 7, 2016</time>
+      <h2 class="title">Akka.NET Streams vs Hopac (vs AsyncSeq - sort of)</h2>
+      <div class="summary">Akka.NET Streams is a port of its Scala/Java counterpart and intended to execute complex data processing graphs, optionally in parallel and even distributed. It has quite different semantics compared to Hopac&rsquo;s one and it&rsquo;s wrong to compare them feature-by-feature, but it&rsquo;s still interesting to benchmark them in a scenario which both of them supports well: read lines of a file asynchronously, filter them by a regex in controlled degree of parallelism, then normalize the lines with a simple string manipulation algorithm, also in parallel, then count the number of lines.</div>
+    </div>
+  </a>
+</article>
+</div>
+      
+    </div>
+  </div>
+
+  
+  <div class="section taxonomies">
+    <header><div class="title">category</div></header>
+    <div class="content">
+      
+    </div>
+  </div>
+  
+  <div class="section taxonomies">
+    <header><div class="title">tag</div></header>
+    <div class="content">
+      
+    </div>
+  </div>
+  
+
+</aside>
+
+    </div>
+
+  </div>
+
+      </div>
+
+    <footer class="site">
+      <p>&copy; 2016 vaskir&#39;s blog</p>
+      <p>Powered by <a href="http://gohugo.io" target="_blank" rel="nofollow">Hugo</a>, Theme <a href="https://github.com/dim0627/hugo_theme_robust" target="_blank" rel="nofollow">robust</a> designed by <a href="http://yet.unresolved.xyz" target="_blank" rel="nofollow">Daisuke Tsuji</a></p>
+    </footer>
+
+    <script src="//code.jquery.com/jquery-2.1.3.min.js"></script>
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    
+
+  </body>
+</html>
+
+</div>
