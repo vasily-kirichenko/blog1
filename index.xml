@@ -12,10 +12,10 @@
       
         <item>
           <title>Akka.NET Streams vs Hopac (vs AsyncSeq - sort of)</title>
-          <link>https://vasily-kirichenko.github.io/blog1/post/post1/</link>
+          <link>https://vasily-kirichenko.github.io/blog1/post/akka_net_streams_vs_hopac/</link>
           <pubDate>Sat, 07 May 2016 09:25:11 MSK</pubDate>
           <author></author>
-          <guid>https://vasily-kirichenko.github.io/blog1/post/post1/</guid>
+          <guid>https://vasily-kirichenko.github.io/blog1/post/akka_net_streams_vs_hopac/</guid>
           <description>
 
 &lt;p&gt;&lt;a href=&#34;https://github.com/akkadotnet/akka.net/tree/akka-streams&#34;&gt;Akka.NET Streams&lt;/a&gt; is a port of its
@@ -148,7 +148,7 @@ enough to write a combinator similar to what I wrote for Hopac (&lt;code&gt;Stre
 poor performance it&amp;rsquo;s impossible to compare AsyncSeq with the leaders, hence it&amp;rsquo;s not presented in the chart.
 I opened an issue in AsyncSeq repository, it seems it&amp;rsquo;s a known bug and I hope it will be fixed soon.&lt;/p&gt;
 
-&lt;h2 id=&#34;conclusions:a8158e2ae96b1b34e1f733f49d15bcfd&#34;&gt;Conclusions&lt;/h2&gt;
+&lt;h2 id=&#34;conclusions:b714f826f60fddaf3bb19c3ea3aa1ce2&#34;&gt;Conclusions&lt;/h2&gt;
 
 &lt;ul&gt;
 &lt;li&gt;Use Hopac if you need the best performance available on .NET, or if you need to implement arbitrary complex
@@ -160,7 +160,7 @@ C#-targeted API, so it&amp;rsquo;s necessary to write a thin layer over it in or
 with performance is fixed.&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h2 id=&#34;update-6-may-2016:a8158e2ae96b1b34e1f733f49d15bcfd&#34;&gt;Update 6 May, 2016&lt;/h2&gt;
+&lt;h2 id=&#34;update-6-may-2016:b714f826f60fddaf3bb19c3ea3aa1ce2&#34;&gt;Update 6 May, 2016&lt;/h2&gt;
 
 &lt;p&gt;Marc Piechura suggested a way to exclude materialization phase from the benchmark, here is the modified code:&lt;/p&gt;
 

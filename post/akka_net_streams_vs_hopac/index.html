@@ -20,7 +20,7 @@
     <meta property="og:type" content="article">
     
 
-    <meta property="og:url" content="https://vasily-kirichenko.github.io/blog1/post/post1/">
+    <meta property="og:url" content="https://vasily-kirichenko.github.io/blog1/post/akka_net_streams_vs_hopac/">
     
     
 
@@ -45,7 +45,7 @@
         <meta itemprop="dateModified" content="2016-05-07T09:25:11&#43;03:00">
         <meta itemprop="headline" content="Akka.NET Streams vs Hopac (vs AsyncSeq - sort of)">
         <meta itemprop="description" content="Akka.NET Streams is a port of its Scala/Java counterpart and intended to execute complex data processing graphs, optionally in parallel and even distributed. It has quite different semantics compared to Hopac&rsquo;s one and it&rsquo;s wrong to compare them feature-by-feature, but it&rsquo;s still interesting to benchmark them in a scenario which both of them supports well: read lines of a file asynchronously, filter them by a regex in controlled degree of parallelism, then normalize the lines with a simple string manipulation algorithm, also in parallel, then count the number of lines.">
-        <meta itemprop="url" content="https://vasily-kirichenko.github.io/blog1/post/post1/">
+        <meta itemprop="url" content="https://vasily-kirichenko.github.io/blog1/post/akka_net_streams_vs_hopac/">
         <div itemprop="image" itemscope itemtype="https://schema.org/ImageObject">
           <meta itemprop="url" content="https://vasily-kirichenko.github.io/blog1/images/default.jpg" />
           <meta itemprop="width" content="800">
@@ -203,7 +203,7 @@ enough to write a combinator similar to what I wrote for Hopac (<code>Stream.con
 poor performance it&rsquo;s impossible to compare AsyncSeq with the leaders, hence it&rsquo;s not presented in the chart.
 I opened an issue in AsyncSeq repository, it seems it&rsquo;s a known bug and I hope it will be fixed soon.</p>
 
-<h2 id="conclusions:a8158e2ae96b1b34e1f733f49d15bcfd">Conclusions</h2>
+<h2 id="conclusions:b714f826f60fddaf3bb19c3ea3aa1ce2">Conclusions</h2>
 
 <ul>
 <li>Use Hopac if you need the best performance available on .NET, or if you need to implement arbitrary complex
@@ -215,7 +215,7 @@ C#-targeted API, so it&rsquo;s necessary to write a thin layer over it in order 
 with performance is fixed.</li>
 </ul>
 
-<h2 id="update-6-may-2016:a8158e2ae96b1b34e1f733f49d15bcfd">Update 6 May, 2016</h2>
+<h2 id="update-6-may-2016:b714f826f60fddaf3bb19c3ea3aa1ce2">Update 6 May, 2016</h2>
 
 <p>Marc Piechura suggested a way to exclude materialization phase from the benchmark, here is the modified code:</p>
 
@@ -261,10 +261,10 @@ time from the benchmark because in a long running system the materialization is 
           
 
           <div class="section share">
-            <a href="http://www.facebook.com/sharer.php?src=bm&u=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fpost1%2f&t=Akka.NET%20Streams%20vs%20Hopac%20%28vs%20AsyncSeq%20-%20sort%20of%29" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-facebook"></i></a>
-            <a href="http://twitter.com/intent/tweet?url=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fpost1%2f&text=Akka.NET%20Streams%20vs%20Hopac%20%28vs%20AsyncSeq%20-%20sort%20of%29&tw_p=tweetbutton" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-twitter"></i></a>
-            <a href="https://plus.google.com/share?url=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fpost1%2f" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-google-plus"></i></a>
-            <a href="http://getpocket.com/edit?url=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fpost1%2f&title=Akka.NET%20Streams%20vs%20Hopac%20%28vs%20AsyncSeq%20-%20sort%20of%29" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-get-pocket"></i></a>
+            <a href="http://www.facebook.com/sharer.php?src=bm&u=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fakka_net_streams_vs_hopac%2f&t=Akka.NET%20Streams%20vs%20Hopac%20%28vs%20AsyncSeq%20-%20sort%20of%29" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-facebook"></i></a>
+            <a href="http://twitter.com/intent/tweet?url=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fakka_net_streams_vs_hopac%2f&text=Akka.NET%20Streams%20vs%20Hopac%20%28vs%20AsyncSeq%20-%20sort%20of%29&tw_p=tweetbutton" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-twitter"></i></a>
+            <a href="https://plus.google.com/share?url=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fakka_net_streams_vs_hopac%2f" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-google-plus"></i></a>
+            <a href="http://getpocket.com/edit?url=https%3a%2f%2fvasily-kirichenko.github.io%2fblog1%2fpost%2fakka_net_streams_vs_hopac%2f&title=Akka.NET%20Streams%20vs%20Hopac%20%28vs%20AsyncSeq%20-%20sort%20of%29" onclick="window.open(this.href, 'PCwindow', 'width=550, height=350, menubar=no, toolbar=no, scrollbars=yes'); return false;"><i class="fa fa-get-pocket"></i></a>
           </div>
 
           
@@ -285,8 +285,8 @@ time from the benchmark because in a long running system the materialization is 
 <ul>
 <li>
 <ul>
-<li><a href="#conclusions:a8158e2ae96b1b34e1f733f49d15bcfd">Conclusions</a></li>
-<li><a href="#update-6-may-2016:a8158e2ae96b1b34e1f733f49d15bcfd">Update 6 May, 2016</a></li>
+<li><a href="#conclusions:b714f826f60fddaf3bb19c3ea3aa1ce2">Conclusions</a></li>
+<li><a href="#update-6-may-2016:b714f826f60fddaf3bb19c3ea3aa1ce2">Update 6 May, 2016</a></li>
 </ul></li>
 </ul>
 </nav></div>
@@ -300,7 +300,7 @@ time from the benchmark because in a long running system the materialization is 
     <div class="content">
       
       <div class="sm"><article class="li">
-  <a href="https://vasily-kirichenko.github.io/blog1/post/post1/" class="clearfix">
+  <a href="https://vasily-kirichenko.github.io/blog1/post/akka_net_streams_vs_hopac/" class="clearfix">
     <div class="image" style="background-image: url(https://vasily-kirichenko.github.io/blog1/images/default.jpg);"></div>
     <div class="detail">
       <time>Sat, May 7, 2016</time>
